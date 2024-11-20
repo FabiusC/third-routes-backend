@@ -5,7 +5,7 @@ const pg_1 = require("pg");
 // Configuración de la base de datos (actualizar los valores con los de tu instancia RDS)
 const pool = new pg_1.Pool({
     user: "postgres",
-    host: "third-parties-lm.cluster-c90iyucmovrc.us-east-2.rds.amazonaws.com",
+    host: "thirds-lm.cdkukm4ik3ba.us-east-1.rds.amazonaws.com",
     database: "postgres",
     password: "Cuenta?AWS5%",
     port: 5432,
