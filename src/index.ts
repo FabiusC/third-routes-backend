@@ -15,5 +15,5 @@ app.use("/api", routes);
 
 // Inicio del servidor
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en https://localhost:${PORT}`);
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
