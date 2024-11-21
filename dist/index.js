@@ -8,7 +8,7 @@ const cors_1 = __importDefault(require("cors"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const routes_1 = __importDefault(require("./routes/routes"));
 const app = (0, express_1.default)();
-const PORT = 3000;
+const PORT = 8080;
 // Middleware
 app.use((0, cors_1.default)());
 app.use(body_parser_1.default.json());
