@@ -4,7 +4,7 @@ import bodyParser from "body-parser";
 import routes from "./routes/routes";
 
 const app = express();
-const PORT = 8080;
+const PORT = 3000;
 
 // Middleware
 app.use(cors());
