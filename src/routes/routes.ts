@@ -68,45 +68,54 @@ router.get("/routes-history", async (_req: Request, res: Response) => {
 });
 
 // Agregar una nueva ruta
-router.post("/add-route", async (req: Request, res: Response) => {
-  try {
-    const { routes } = req.body;
+router.post(
+  "/add-route",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { routes } = req.body;
 
-    if (!routes || !Array.isArray(routes) || routes.length === 0) {
-      res.status(400).json({
-        error:
-          "Debe proporcionar al menos una ruta con fecha, ID de tercero y comentario.",
-      });
-      return;
-    }
+      if (!routes || !Array.isArray(routes) || routes.length === 0) {
+        res.status(400).json({
+          error:
+            "Debe proporcionar al menos una ruta con fecha, ID de tercero y comentario.",
+        });
+        return;
+      }
 
-    // Validate that each route contains the necessary fields
-    for (const route of routes) {
-      if (!route.third_party_id || !route.route_date || !route.comment) {
+      // Validate that each route contains the necessary fields
+      const hasMissingFields = routes.some(
+        (route: {
+          third_party_id: number;
+          route_date: string;
+          comment: string;
+        }) => !route.third_party_id || !route.route_date || !route.comment
+      );
+
+      if (hasMissingFields) {
         res.status(400).json({
           error:
             "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
         });
         return;
       }
+
+      // Insert each route into the database
+      const insertPromises = routes.map((route: any) =>
+        query(
+          "INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)",
+          [route.route_date, route.third_party_id, route.comment]
+        )
+      );
+
+      await Promise.all(insertPromises);
+
+      res.status(201).json({ message: "Rutas creadas exitosamente." });
+    } catch (err) {
+      console.error("Error al crear las rutas:", err);
+      res.status(500).json({ error: "Error al crear las rutas." });
     }
-
-    // Insert each route into the database
-    const insertPromises = routes.map((route: any) =>
-      query(
-        "INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)",
-        [route.route_date, route.third_party_id, route.comment]
-      )
-    );
-
-    await Promise.all(insertPromises);
-
-    res.status(201).json({ message: "Rutas creadas exitosamente." });
-  } catch (err) {
-    console.error("Error al crear las rutas:", err);
-    res.status(500).json({ error: "Error al crear las rutas." });
   }
-});
+);
 
 // Agregar un nuevo tercero
 router.post("/add-third-party", async (req: Request, res: Response) => {
