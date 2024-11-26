@@ -70,44 +70,41 @@ router.get("/routes-history", async (_req: Request, res: Response) => {
 // Agregar una nueva ruta
 router.post("/add-route", async (req: Request, res: Response) => {
   try {
-    const { route_date, third_party_ids, comments } = req.body;
+    const { routes } = req.body;
 
-    if (
-      !third_party_ids ||
-      !Array.isArray(third_party_ids) ||
-      third_party_ids.length === 0
-    ) {
-      res
-        .status(400)
-        .json({ error: "Debe proporcionar al menos un ID de tercero." });
+    if (!routes || !Array.isArray(routes) || routes.length === 0) {
+      res.status(400).json({
+        error:
+          "Debe proporcionar al menos una ruta con fecha, ID de tercero y comentario.",
+      });
       return;
     }
 
-    if (!comments || comments.length !== third_party_ids.length) {
-      res
-        .status(400)
-        .json({ error: "Debe proporcionar un comentario para cada tercero." });
-      return;
+    // Validate that each route contains the necessary fields
+    for (const route of routes) {
+      if (!route.third_party_id || !route.route_date || !route.comment) {
+        res.status(400).json({
+          error:
+            "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
+        });
+        return;
+      }
     }
 
-    // Inserta cada ruta en la base de datos
-    const insertPromises = third_party_ids.map((id: number, index: number) =>
+    // Insert each route into the database
+    const insertPromises = routes.map((route: any) =>
       query(
         "INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)",
-        [
-          route_date || new Date().toISOString().split("T")[0],
-          id,
-          comments[index] || null,
-        ]
+        [route.route_date, route.third_party_id, route.comment]
       )
     );
 
     await Promise.all(insertPromises);
 
-    res.status(201).json({ message: "Ruta creada exitosamente." });
+    res.status(201).json({ message: "Rutas creadas exitosamente." });
   } catch (err) {
-    console.error("Error al crear la ruta:", err);
-    res.status(500).json({ error: "Error al crear la ruta." });
+    console.error("Error al crear las rutas:", err);
+    res.status(500).json({ error: "Error al crear las rutas." });
   }
 });
 
