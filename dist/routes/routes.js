@@ -78,13 +78,12 @@ router.post("/add-route", async (req, res) => {
             return;
         }
         // Validate that each route contains the necessary fields
-        for (const route of routes) {
-            if (!route.third_party_id || !route.route_date || !route.comment) {
-                res.status(400).json({
-                    error: "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
-                });
-                return;
-            }
+        const hasMissingFields = routes.some((route) => !route.third_party_id || !route.route_date || !route.comment);
+        if (hasMissingFields) {
+            res.status(400).json({
+                error: "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
+            });
+            return;
         }
         // Insert each route into the database
         const insertPromises = routes.map((route) => (0, db_1.query)("INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)", [route.route_date, route.third_party_id, route.comment]));
