@@ -29,6 +29,21 @@ router.get("/", (_req, res) => {
             endpoint: "/api/add-third-party",
             description: "Agregar un nuevo tercero",
         },
+        {
+            method: "GET",
+            endpoint: "/api/routes/today",
+            description: "Obtener las rutas de hoy",
+        },
+        {
+            method: "DELETE",
+            endpoint: "/api/route/:id",
+            description: "Eliminar una ruta por ID",
+        },
+        {
+            method: "DELETE",
+            endpoint: "/api/third-party/:id",
+            description: "Eliminar un tercero por ID",
+        },
     ];
     res.json(endpoints);
 });
@@ -50,6 +65,7 @@ router.get("/routes-history", async (_req, res) => {
     try {
         const result = await (0, db_1.query)(`
       SELECT 
+        rh.id AS route_id,
         rh.route_date AS route_date,
         tp.name AS third_party_name,
         tp.address,
@@ -68,7 +84,7 @@ router.get("/routes-history", async (_req, res) => {
     }
 });
 // Obtener Rutas de Hoy
-router.get("/routes/today", async (req, res) => {
+router.get("/routes/today", async (_req, res) => {
     try {
         const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
         const result = await (0, db_1.query)("SELECT r.route_date, t.name AS third_party_name, t.address, t.contact_name, t.contact_info, r.comment FROM routes_history r JOIN third_parties t ON r.third_party_id = t.id WHERE r.route_date = $1", [today]);
@@ -90,12 +106,13 @@ router.post("/add-route", async (req, res) => {
             return;
         }
         // Validate that each route contains the necessary fields
-        const hasMissingFields = routes.some((route) => !route.third_party_id || !route.route_date || !route.comment);
-        if (hasMissingFields) {
-            res.status(400).json({
-                error: "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
-            });
-            return;
+        for (const route of routes) {
+            if (!route.third_party_id || !route.route_date || !route.comment) {
+                res.status(400).json({
+                    error: "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
+                });
+                return;
+            }
         }
         // Insert each route into the database
         const insertPromises = routes.map((route) => (0, db_1.query)("INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)", [route.route_date, route.third_party_id, route.comment]));
@@ -108,19 +125,24 @@ router.post("/add-route", async (req, res) => {
     }
 });
 // Eliminar una ruta
-router.delete("/routes/:id", async (req, res) => {
+router.delete("/route/:id", async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
             res.status(400).json({ error: "El ID de la ruta es obligatorio." });
             return;
         }
-        // Delete route from DB
-        await (0, db_1.query)("DELETE FROM routes_history WHERE id = $1", [id]);
+        const result = await (0, db_1.query)("DELETE FROM routes_history WHERE id = $1 RETURNING *", [id]);
+        if (result.rowCount === 0) {
+            res
+                .status(404)
+                .json({ error: "La ruta con el ID especificado no existe." });
+            return;
+        }
         res.status(200).json({ message: "Ruta eliminada correctamente." });
     }
     catch (err) {
-        console.error("Error deleting route:", err);
+        console.error("Error al eliminar la ruta:", err);
         res.status(500).json({ error: "Error al eliminar la ruta." });
     }
 });
@@ -134,15 +156,18 @@ router.post("/add-third-party", async (req, res) => {
             });
             return;
         }
-        await (0, db_1.query)(`
-          INSERT INTO third_parties (name, address, contact_name, contact_info, category)
-          VALUES ($1, $2, $3, $4, $5)
-          `, [name, address, contact_name || null, contact_info || null, category]);
-        res.status(201).json({ message: "Tercero agregado exitosamente" });
+        const result = await (0, db_1.query)(`
+      INSERT INTO third_parties (name, address, contact_name, contact_info, category)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+      `, [name, address, contact_name || null, contact_info || null, category]);
+        res.status(201).json({
+            message: "Tercero agregado exitosamente",
+            thirdParty: result.rows[0],
+        });
     }
     catch (err) {
-        console.error("Error capturado:", err); // Registrar el error completo para depuración
-        // Identificar el error específico de restricción única
+        console.error("Error capturado:", err);
         if (err.code === "23505") {
             res.status(400).json({ error: "El nombre del tercero ya existe." });
         }
@@ -159,7 +184,13 @@ router.delete("/third-party/:id", async (req, res) => {
             res.status(400).json({ error: "El ID del tercero es obligatorio." });
             return;
         }
-        await (0, db_1.query)("DELETE FROM third_parties WHERE id = $1", [id]);
+        const result = await (0, db_1.query)("DELETE FROM third_parties WHERE id = $1 RETURNING *", [id]);
+        if (result.rowCount === 0) {
+            res
+                .status(404)
+                .json({ error: "El tercero con el ID especificado no existe." });
+            return;
+        }
         res.status(200).json({ message: "Tercero eliminado correctamente." });
     }
     catch (err) {
