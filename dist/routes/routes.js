@@ -109,17 +109,13 @@ router.post("/add-route", async (req, res) => {
 });
 // Eliminar una ruta
 router.delete("/route/:id", async (req, res) => {
+    const { id } = req.params;
     try {
-        const { id } = req.params;
-        if (!id) {
-            res.status(400).json({ error: "El ID de la ruta es obligatorio." });
-            return;
-        }
         await (0, db_1.query)("DELETE FROM routes_history WHERE id = $1", [id]);
         res.status(200).json({ message: "Ruta eliminada correctamente." });
     }
-    catch (err) {
-        console.error("Error al eliminar la ruta:", err);
+    catch (error) {
+        console.error("Error al eliminar la ruta:", error);
         res.status(500).json({ error: "Error al eliminar la ruta." });
     }
 });
