@@ -132,6 +132,28 @@ router.post(
   }
 );
 
+// Eliminar una ruta
+router.delete(
+  "/route/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({ error: "El ID de la ruta es obligatorio." });
+        return;
+      }
+
+      await query("DELETE FROM routes_history WHERE id = $1", [id]);
+
+      res.status(200).json({ message: "Ruta eliminada correctamente." });
+    } catch (err) {
+      console.error("Error al eliminar la ruta:", err);
+      res.status(500).json({ error: "Error al eliminar la ruta." });
+    }
+  }
+);
+
 // Agregar un nuevo tercero
 router.post("/add-third-party", async (req: Request, res: Response) => {
   try {
