@@ -83,15 +83,27 @@ router.get("/routes-history", async (_req, res) => {
         res.status(500).json({ error: "Error al obtener el histórico de rutas" });
     }
 });
-// Obtener Rutas de Hoy
-router.get("/routes/today", async (_req, res) => {
+// Obtener Rutas Pendientes
+router.get("/routes/pending", async (_req, res) => {
     try {
-        const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
-        const result = await (0, db_1.query)("SELECT r.route_date, t.name AS third_party_name, t.address, t.contact_name, t.contact_info, r.comment FROM routes_history r JOIN third_parties t ON r.third_party_id = t.id WHERE r.route_date = $1", [today]);
+        // Consulta para obtener las rutas con el estado pendiente (is_finished = false)
+        const result = await (0, db_1.query)(`SELECT 
+        r.id AS route_id, 
+        r.route_date, 
+        t.name AS third_party_name, 
+        t.address, 
+        t.contact_name, 
+        t.contact_info, 
+        r.comment 
+      FROM routes_history r 
+      JOIN third_parties t ON r.third_party_id = t.id 
+      WHERE r.is_finished = false`);
+        // Respuesta con las rutas pendientes
         res.status(200).json(result.rows);
     }
     catch (err) {
-        res.status(500).json({ error: "Error obteniendo las rutas de hoy" });
+        console.error("Error obteniendo las rutas pendientes:", err);
+        res.status(500).json({ error: "Error obteniendo las rutas pendientes" });
     }
 });
 // Agregar una nueva ruta
