@@ -10,55 +10,32 @@ const router = express_1.default.Router();
 router.get("/", (_req, res) => {
     const endpoints = [
         {
+            url: "/routes-history",
             method: "GET",
-            endpoint: "/api/third-parties",
-            description: "Obtener todos los terceros",
+            description: "Obtener el histórico de rutas",
         },
         {
+            url: "/routes/pending",
             method: "GET",
-            endpoint: "/api/routes-history",
-            description: "Obtener el histórico de rutas con comentarios",
+            description: "Obtener las rutas pendientes",
         },
         {
+            url: "/routes/:id",
+            method: "PUT",
+            description: "Marcar una ruta como hecha",
+        },
+        {
+            url: "/add-route",
             method: "POST",
-            endpoint: "/api/add-route",
-            description: "Crear una nueva ruta con comentarios",
+            description: "Agregar una nueva ruta",
         },
         {
-            method: "POST",
-            endpoint: "/api/add-third-party",
-            description: "Agregar un nuevo tercero",
-        },
-        {
-            method: "GET",
-            endpoint: "/api/routes/today",
-            description: "Obtener las rutas de hoy",
-        },
-        {
+            url: "/route/:id",
             method: "DELETE",
-            endpoint: "/api/route/:id",
-            description: "Eliminar una ruta por ID",
-        },
-        {
-            method: "DELETE",
-            endpoint: "/api/third-party/:id",
-            description: "Eliminar un tercero por ID",
+            description: "Eliminar una ruta",
         },
     ];
     res.json(endpoints);
-});
-// Obtener la lista de terceros
-router.get("/third-parties", async (_req, res) => {
-    try {
-        const result = await (0, db_1.query)("SELECT id, name, address, contact_name, contact_info, category FROM third_parties");
-        res.json(result.rows);
-    }
-    catch (err) {
-        console.error("Error al obtener terceros:", err.message, err.stack);
-        res
-            .status(500)
-            .json({ error: "Error al obtener terceros", details: err.message });
-    }
 });
 // Obtener el histórico de rutas
 router.get("/routes-history", async (_req, res) => {
@@ -86,8 +63,8 @@ router.get("/routes-history", async (_req, res) => {
 // Obtener Rutas Pendientes
 router.get("/routes/pending", async (_req, res) => {
     try {
-        // Consulta para obtener las rutas con el estado pendiente (is_finished = false)
-        const result = await (0, db_1.query)(`SELECT 
+        const result = await (0, db_1.query)(`
+      SELECT 
         r.id AS route_id, 
         r.route_date, 
         t.name AS third_party_name, 
@@ -97,13 +74,39 @@ router.get("/routes/pending", async (_req, res) => {
         r.comment 
       FROM routes_history r 
       JOIN third_parties t ON r.third_party_id = t.id 
-      WHERE r.is_finished = false`);
-        // Respuesta con las rutas pendientes
+      WHERE r.is_finished = false
+    `);
         res.status(200).json(result.rows);
     }
     catch (err) {
         console.error("Error obteniendo las rutas pendientes:", err);
         res.status(500).json({ error: "Error obteniendo las rutas pendientes" });
+    }
+});
+// Marcar una ruta como hecha y agregar observaciones
+router.put("/routes/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { observations } = req.body;
+        if (!id) {
+            res.status(400).json({ error: "El ID de la ruta es obligatorio." });
+            return;
+        }
+        const result = await (0, db_1.query)("UPDATE routes_history SET is_finished = true, observations = $1 WHERE id = $2 RETURNING *", [observations || null, id]);
+        if (result.rowCount === 0) {
+            res
+                .status(404)
+                .json({ error: "La ruta con el ID especificado no existe." });
+            return;
+        }
+        res.status(200).json({
+            message: "Ruta marcada como hecha correctamente.",
+            route: result.rows[0],
+        });
+    }
+    catch (err) {
+        console.error("Error al marcar la ruta como hecha:", err);
+        res.status(500).json({ error: "Error al marcar la ruta como hecha." });
     }
 });
 // Agregar una nueva ruta
@@ -116,16 +119,6 @@ router.post("/add-route", async (req, res) => {
             });
             return;
         }
-        // Validate that each route contains the necessary fields
-        for (const route of routes) {
-            if (!route.third_party_id || !route.route_date || !route.comment) {
-                res.status(400).json({
-                    error: "Cada ruta debe contener un ID de tercero, una fecha y un comentario.",
-                });
-                return;
-            }
-        }
-        // Insert each route into the database
         const insertPromises = routes.map((route) => (0, db_1.query)("INSERT INTO routes_history (route_date, third_party_id, comment) VALUES ($1, $2, $3)", [route.route_date, route.third_party_id, route.comment]));
         await Promise.all(insertPromises);
         res.status(201).json({ message: "Rutas creadas exitosamente." });
@@ -157,6 +150,7 @@ router.delete("/route/:id", async (req, res) => {
         res.status(500).json({ error: "Error al eliminar la ruta." });
     }
 });
+// Metodos CRUD de Terceros
 // Agregar un nuevo tercero
 router.post("/add-third-party", async (req, res) => {
     try {
@@ -187,26 +181,17 @@ router.post("/add-third-party", async (req, res) => {
         }
     }
 });
-// Eliminar un tercero
-router.delete("/third-party/:id", async (req, res) => {
+// Obtener la lista de terceros
+router.get("/third-parties", async (_req, res) => {
     try {
-        const { id } = req.params;
-        if (!id) {
-            res.status(400).json({ error: "El ID del tercero es obligatorio." });
-            return;
-        }
-        const result = await (0, db_1.query)("DELETE FROM third_parties WHERE id = $1 RETURNING *", [id]);
-        if (result.rowCount === 0) {
-            res
-                .status(404)
-                .json({ error: "El tercero con el ID especificado no existe." });
-            return;
-        }
-        res.status(200).json({ message: "Tercero eliminado correctamente." });
+        const result = await (0, db_1.query)("SELECT id, name, address, contact_name, contact_info, category FROM third_parties");
+        res.json(result.rows);
     }
     catch (err) {
-        console.error("Error al eliminar tercero:", err);
-        res.status(500).json({ error: "Error al eliminar el tercero." });
+        console.error("Error al obtener terceros:", err.message, err.stack);
+        res
+            .status(500)
+            .json({ error: "Error al obtener terceros", details: err.message });
     }
 });
 // Actualizar un tercero
@@ -240,6 +225,28 @@ router.put("/third-parties/:id", async (req, res) => {
     catch (err) {
         console.error("Error al actualizar tercero:", err);
         res.status(500).json({ error: "Error al actualizar el tercero." });
+    }
+});
+// Eliminar un tercero
+router.delete("/third-party/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            res.status(400).json({ error: "El ID del tercero es obligatorio." });
+            return;
+        }
+        const result = await (0, db_1.query)("DELETE FROM third_parties WHERE id = $1 RETURNING *", [id]);
+        if (result.rowCount === 0) {
+            res
+                .status(404)
+                .json({ error: "El tercero con el ID especificado no existe." });
+            return;
+        }
+        res.status(200).json({ message: "Tercero eliminado correctamente." });
+    }
+    catch (err) {
+        console.error("Error al eliminar tercero:", err);
+        res.status(500).json({ error: "Error al eliminar el tercero." });
     }
 });
 exports.default = router;
