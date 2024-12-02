@@ -63,36 +63,56 @@ router.get("/routes-history", async (_req: Request, res: Response) => {
 // Actualizar una ruta
 router.put("/routes/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { route_date, comment, is_finished, observations } = req.body;
+  const { route_date, third_party_id, comment, is_finished, observations } =
+    req.body;
+
   // Validar id
   if (!id) {
     res.status(400).json({ error: "El ID de la ruta es obligatorio." });
     return;
   }
-  // Validar campos
-  if (!route_date || !comment || is_finished === undefined) {
+
+  // Validar campos obligatorios
+  if (!route_date || !third_party_id || !comment || is_finished === undefined) {
     res.status(400).json({
       error:
-        "Los campos fecha, ID de tercero, comentario y estado son obligatorios.",
+        "Los campos route_date, third_party_id, comment, is_finished y observations son obligatorios.",
     });
     return;
   }
+
   try {
+    // Log para depuración
+    console.log("Datos recibidos para actualización:", {
+      id,
+      route_date,
+      third_party_id,
+      comment,
+      is_finished,
+      observations,
+    });
+
     const result = await query(
       `
       UPDATE routes_history
-      SET route_date = $1, third_party_id = $2, comment = $3, is_finished = $4, observations = $5
+      SET route_date = $1, 
+          third_party_id = $2, 
+          comment = $3, 
+          is_finished = $4, 
+          observations = $5
       WHERE id = $6
       RETURNING *;
       `,
-      [route_date, comment, is_finished, observations, id]
+      [route_date, third_party_id, comment, is_finished, observations, id]
     );
+
     if (result.rowCount === 0) {
       res
         .status(404)
         .json({ error: "La ruta con el ID especificado no existe." });
       return;
     }
+
     res.status(200).json({
       message: "Ruta actualizada correctamente.",
       route: result.rows[0],
