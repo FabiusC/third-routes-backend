@@ -60,29 +60,6 @@ router.get("/routes-history", async (_req: Request, res: Response) => {
   }
 });
 
-// Obtener Rutas Pendientes
-router.get("/routes/pending", async (_req: Request, res: Response) => {
-  try {
-    const result = await query(`
-      SELECT 
-        r.id AS route_id, 
-        r.route_date, 
-        t.name AS third_party_name, 
-        t.address, 
-        t.contact_name, 
-        t.contact_info, 
-        r.comment 
-      FROM routes_history r 
-      JOIN third_parties t ON r.third_party_id = t.id 
-      WHERE r.is_finished = false
-    `);
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error("Error obteniendo las rutas pendientes:", err);
-    res.status(500).json({ error: "Error obteniendo las rutas pendientes" });
-  }
-});
-
 // Actualizar una ruta
 router.put("/routes/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
