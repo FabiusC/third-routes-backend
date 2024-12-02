@@ -86,15 +86,14 @@ router.get("/routes/pending", async (_req: Request, res: Response) => {
 // Actualizar una ruta
 router.put("/routes/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { route_date, third_party_id, comment, is_finished, observations } =
-    req.body;
+  const { route_date, comment, is_finished, observations } = req.body;
   // Validar id
   if (!id) {
     res.status(400).json({ error: "El ID de la ruta es obligatorio." });
     return;
   }
   // Validar campos
-  if (!route_date || !third_party_id || !comment || is_finished === undefined) {
+  if (!route_date || !comment || is_finished === undefined) {
     res.status(400).json({
       error:
         "Los campos fecha, ID de tercero, comentario y estado son obligatorios.",
@@ -109,7 +108,7 @@ router.put("/routes/:id", async (req: Request, res: Response) => {
       WHERE id = $6
       RETURNING *;
       `,
-      [route_date, third_party_id, comment, is_finished, observations, id]
+      [route_date, comment, is_finished, observations, id]
     );
     if (result.rowCount === 0) {
       res
