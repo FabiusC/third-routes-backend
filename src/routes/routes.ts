@@ -1,5 +1,6 @@
 import express, { Request, Response, Router } from "express";
 import { query } from "../database/db";
+import { ParamsDictionary } from "express-serve-static-core";
 import { ParsedQs } from "qs";
 
 const router: Router = express.Router();
@@ -82,36 +83,47 @@ router.get("/routes/pending", async (_req: Request, res: Response) => {
   }
 });
 
-// Marcar una ruta como hecha y agregar observaciones
+// Actualizar una ruta
 router.put("/routes/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { route_date, third_party_id, comment, is_finished, observations } =
+    req.body;
+  // Validar id
+  if (!id) {
+    res.status(400).json({ error: "El ID de la ruta es obligatorio." });
+    return;
+  }
+  // Validar campos
+  if (!route_date || !third_party_id || !comment || is_finished === undefined) {
+    res.status(400).json({
+      error:
+        "Los campos fecha, ID de tercero, comentario y estado son obligatorios.",
+    });
+    return;
+  }
   try {
-    const { id } = req.params;
-    const { observations } = req.body;
-
-    if (!id) {
-      res.status(400).json({ error: "El ID de la ruta es obligatorio." });
-      return;
-    }
-
     const result = await query(
-      "UPDATE routes_history SET is_finished = true, observations = $1 WHERE id = $2 RETURNING *",
-      [observations || null, id]
+      `
+      UPDATE routes_history
+      SET route_date = $1, third_party_id = $2, comment = $3, is_finished = $4, observations = $5
+      WHERE id = $6
+      RETURNING *;
+      `,
+      [route_date, third_party_id, comment, is_finished, observations, id]
     );
-
     if (result.rowCount === 0) {
       res
         .status(404)
         .json({ error: "La ruta con el ID especificado no existe." });
       return;
     }
-
     res.status(200).json({
-      message: "Ruta marcada como hecha correctamente.",
+      message: "Ruta actualizada correctamente.",
       route: result.rows[0],
     });
   } catch (err) {
-    console.error("Error al marcar la ruta como hecha:", err);
-    res.status(500).json({ error: "Error al marcar la ruta como hecha." });
+    console.error("Error al actualizar la ruta:", err);
+    res.status(500).json({ error: "Error al actualizar la ruta." });
   }
 });
 
