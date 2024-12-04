@@ -48,7 +48,9 @@ router.get("/routes-history", async (_req, res) => {
         tp.address,
         tp.contact_name,
         tp.contact_info,
-        rh.comment
+        rh.comment,
+        rh.is_finished, -- Agregado para obtener el estado
+        rh.observations -- Agregado para obtener las observaciones
       FROM routes_history rh
       JOIN third_parties tp ON rh.third_party_id = tp.id
       ORDER BY rh.route_date DESC
