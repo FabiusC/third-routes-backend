@@ -301,4 +301,110 @@ router.delete(
   }
 );
 
+// Metodos de Productos
+// Obtener todos los productos
+router.get("/products", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query("SELECT * FROM products ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error al obtener productos", details: error });
+  }
+});
+
+// Obtener un producto por ID
+router.get(
+  "/products/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const result = await query("SELECT * FROM products WHERE id = $1", [id]);
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: "Producto no encontrado" });
+        return;
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Error al obtener el producto", details: error });
+    }
+  }
+);
+
+// Crear un nuevo producto
+router.post("/products", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, reference, description, image_url } = req.body;
+    const result = await query(
+      "INSERT INTO products (name, reference, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, reference, description, image_url]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error al crear el producto", details: error });
+  }
+});
+
+// Actualizar un producto por ID
+router.put(
+  "/products/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { name, reference, description, image_url } = req.body;
+
+      const result = await query(
+        "UPDATE products SET name = $1, reference = $2, description = $3, image_url = $4 WHERE id = $5 RETURNING *",
+        [name, reference, description, image_url, id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: "Producto no encontrado" });
+        return;
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Error al actualizar el producto", details: error });
+    }
+  }
+);
+
+// Eliminar un producto por ID
+router.delete(
+  "/products/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const result = await query(
+        "DELETE FROM products WHERE id = $1 RETURNING *",
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: "Producto no encontrado" });
+        return;
+      }
+
+      res.json({
+        message: "Producto eliminado con éxito",
+        deletedProduct: result.rows[0],
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Error al eliminar el producto", details: error });
+    }
+  }
+);
+
 export default router;
